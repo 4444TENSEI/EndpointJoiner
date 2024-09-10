@@ -1,0 +1,24 @@
+{
+    "constituentWord": [
+        "song",
+        "songs",
+        "rank",
+        "user"
+    ],
+    "endWord": [
+        "/",
+        "/666666",
+        "/rank?id=666666"
+    ],
+    "mutexGroups": {
+        "song": [
+            "songs"
+        ]
+    },
+    "baseDomains": [
+        "https://xxx.xxx.com/api",
+        "https://xxx.xxx.com/api/v1",
+        "https://xxx.xxx.com/api/v6"
+    ],
+    "concurrency": 1000
+}

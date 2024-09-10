@@ -3,9 +3,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -96,21 +98,31 @@ func canPing(domain string) bool {
 func main() {
 	rand.Seed(time.Now().UnixNano())
 	client := &http.Client{Timeout: 10 * time.Second}
+	logFile, err := os.Create("EndpointJoinerの运行日志.txt")
+	mw := io.MultiWriter(os.Stdout, logFile)
+	log := func(format string, a ...interface{}) {
+		fmt.Fprintf(mw, format+"\n", a...)
+	}
+	if err != nil {
+		log("xxx 创建日志文件失败: %v\n", err)
+		return
+	}
+	defer logFile.Close()
 
-	fmt.Println("正在加载配置...")
+	log("正在加载配置...\n")
 	config, err := loadConfig("config.json")
 	if err != nil {
-		fmt.Printf("xxx 加载配置失败: %v\n\n", err)
+		log("xxx 加载配置失败: %v\n", err)
 		return
 	}
 
-	fmt.Printf("√√√ 设置并发数为 %d\n\n", config.Concurrency)
+	log("√√√ 设置并发数为 %d", config.Concurrency)
 	var wg sync.WaitGroup
 	semaphore := make(chan struct{}, config.Concurrency)
 
-	fmt.Println("\n正在生成端点组合...")
+	log("\n正在生成端点组合...\n")
 	combinations := generateCombinations(config.ConstituentWord)
-	fmt.Printf("√√√ 端点组合生成完成，共生成 %d 个组合\n\n", len(combinations))
+	log("√√√ 端点组合生成完成，共生成 %d 个组合\n", len(combinations))
 
 	codeCounts := make(map[int]int)
 	headerCodeCounts := make(map[int]int)
@@ -118,11 +130,11 @@ func main() {
 	urlStatusesMutex := &sync.Mutex{}
 
 	var validRequests int
-	fmt.Println("正在执行HTTP请求...")
+	log("正在执行HTTP请求...\n")
 	for _, domain := range config.BaseDomains {
-		fmt.Printf("正在检查域名 %s 是否有效...\n\n", domain)
+		log("正在检查域名 %s 是否有效...\n", domain)
 		if !canPing(domain) {
-			fmt.Printf("xxx 域名 %s 无效，跳过...\n\n", domain)
+			log("xxx 域名 %s 无效，跳过...\n", domain)
 			continue
 		}
 
@@ -146,7 +158,7 @@ func main() {
 
 					resp, err := client.Get(url)
 					if err != nil {
-						fmt.Printf("xxx 请求 %s 失败: %v\n\n", url, err)
+						log("xxx 请求 %s 失败: %v\n", url, err)
 						return
 					}
 					defer resp.Body.Close()
@@ -154,11 +166,11 @@ func main() {
 					headerStatus := resp.StatusCode
 					var responseJSON ResponseJSON
 					if err := json.NewDecoder(resp.Body).Decode(&responseJSON); err != nil {
-						fmt.Printf("xxx 解析 %s 响应失败: %v\n\n", url, err)
+						log("xxx 解析 %s 响应失败: %v\n", url, err)
 						return
 					}
 
-					fmt.Printf("%s\n响应: %d, 响应体code: %d\n\n", url, headerStatus, responseJSON.Code)
+					log("%s\n响应: %d, 响应体code: %d\n", url, headerStatus, responseJSON.Code)
 
 					urlStatusesMutex.Lock()
 					codeCounts[responseJSON.Code]++
@@ -175,24 +187,24 @@ func main() {
 	}
 
 	wg.Wait()
-	fmt.Println("√√√ 任务完成")
+	log("√√√ 任务完成\n")
 
 	if len(headerCodeCounts) > 0 {
 		for code, count := range headerCodeCounts {
-			fmt.Println("\n结果统计:")
-			fmt.Printf("响应头状态码[%d]: %d次\n", code, count)
+			log("结果统计:")
+			log("响应头状态码[%d]: %d次", code, count)
 		}
 	}
 	if len(codeCounts) > 0 {
 		for code, count := range codeCounts {
-			fmt.Printf("响应体code[%d]: %d次", code, count)
+			log("响应体code[%d]: %d次", code, count)
 		}
 	}
 
 	if len(urlStatuses) > 0 {
-		fmt.Println("其他状态码的详细信息:")
+		log("其他状态码的详细信息:\n")
 		for _, status := range urlStatuses {
-			fmt.Printf("请求: %s, 响应头状态码: %d, 响应体中的code状态码: %d\n", status.URL, status.HeaderStatus, status.BodyStatus)
+			log("请求: %s, 响应头状态码: %d, 响应体中的code状态码: %d\n", status.URL, status.HeaderStatus, status.BodyStatus)
 		}
 	}
 }
