@@ -73,3 +73,4 @@ go run main.go
 |     baseDomains     | `字符串`，根域名，尾部不要带``/``斜杠 |
 | concurrency | `数值`，并发数，越大越快 |
 
+
