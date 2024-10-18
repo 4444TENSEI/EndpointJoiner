@@ -72,5 +72,3 @@ go run main.go
 | mutexGroups | `键值对`，定义冲突词，键名与值不会同时出现在最后生成的随机端点中。 |
 |     baseDomains     | `字符串`，根域名，尾部不要带``/``斜杠 |
 | concurrency | `数值`，并发数，越大越快 |
-
-
